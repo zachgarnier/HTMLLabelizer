@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML Labelizer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-header">
+    <div class="brand">
+      <div class="logo">◉</div>
+      <h1>HTML Labelizer</h1>
+    </div>
+    <div class="controls">
+      <div class="file-input" id="file-input-trigger">
+    <input type="file" id="html-file-input" accept=".html,.htm" style="display:none">
+    <label for="html-file-input" style="cursor:pointer;">Load HTML File</label>
+    </div>
+      <button id="download-html" disabled>Download Labeled HTML</button>
+      <button id="clear-all">Clear All</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="title">
+            <h2>HTML Content</h2>
+            <span class="filename" id="current-filename"></span>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="html-content" id="html-content">
+            <div class="empty-state">
+              <h3>No HTML loaded</h3>
+              <p>Upload an HTML file to start labeling</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cards">
+      <div class="card">
+        <div class="card-header">
+          <div class="title">
+            <h2>Label Manager</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="label-creation-section">
+            <div class="label-input-row">
+              <input type="text" id="new-label-name" placeholder="Label name">
+              <input type="color" id="new-label-color" value="#6aa3ff">
+              <button id="add-root-label">Add Label</button>
+            </div>
+          </div>
+          
+          <div class="label-tree" id="label-tree">
+            <!-- Tree will be populated here -->
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="title">
+            <h2>Statistics</h2>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-number" id="total-mentions">0</span>
+              <div class="stat-label">Total Mentions</div>
+            </div>
+            <div class="stat-item">
+              <span class="stat-number" id="label-types">0</span>
+              <div class="stat-label">Label Types</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div class="context-menu hidden" id="context-menu">
+    <h4>Apply Label</h4>
+    <div class="label-options" id="label-options">
+      <!-- Label options will be populated here -->
+    </div>
+  </div>
+
+  <!-- Parameter Menu for Labeled Text -->
+  <div class="param-menu hidden" id="param-menu">
+    <h4 id="param-menu-title">Edit Parameters</h4>
+    <div class="param-form" id="param-form">
+      <!-- Parameter inputs will be populated here -->
+    </div>
+    <div class="param-menu-actions">
+      <button class="save-btn" id="save-params">Save</button>
+      <button class="cancel-btn" id="cancel-params">Cancel</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

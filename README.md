@@ -78,11 +78,19 @@ Planned enhancements:
 
 ---
 
-## 💾 Usage Tips
+## 💻 How to Use  
 
-* Save your work frequently by downloading the HTML file (`Download` option).
-* You can reopen a previously labeled HTML file and continue adding new labels.
-* Avoid creating **sub-sublabels** to prevent unexpected behavior.
+You don’t need to install anything — just open the web app in your browser:  
+
+👉 [HTML Labelizer](https://zachgarnier.github.io/HTMLLabelizer/)  
+
+1. Upload your HTML file.  
+2. Use the right-hand menu to add **labels** and **sublabels**.  
+3. Select text with your mouse and apply labels.  
+4. Click on applied labels to edit attributes.  
+5. Download your updated HTML regularly to avoid losing progress.  
+
+You can also reload a previously labeled HTML file to continue your work.
 
 ---
 

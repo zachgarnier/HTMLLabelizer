@@ -223,13 +223,16 @@
       const actions = document.createElement('div');
       actions.className = 'tree-actions';
       
-      const addBtn = document.createElement('button');
-      addBtn.className = 'tree-action-btn add';
-      addBtn.title = 'Add sublabel';
-      addBtn.onclick = (e) => {
-        e.stopPropagation();
-        promptAddSublabel(nodePath);
-      };
+      if (level === 0) {
+        const addBtn = document.createElement('button');
+        addBtn.className = 'tree-action-btn add';
+        addBtn.title = 'Add sublabel';
+        addBtn.onclick = (e) => {
+            e.stopPropagation();
+            promptAddSublabel(nodePath);
+        };
+        actions.appendChild(addBtn);
+        }
       
       const addParamBtn = document.createElement('button');
       addParamBtn.className = 'tree-action-btn edit';
@@ -249,7 +252,7 @@
         }
       };
       
-      actions.appendChild(addBtn);
+      //actions.appendChild(addBtn);
       actions.appendChild(addParamBtn);
       actions.appendChild(deleteBtn);
       

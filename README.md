@@ -1,4 +1,3 @@
-````markdown
 # HTML Labelizer
 
 The **HTML Labelizer** is a lightweight web-based application that allows you to annotate HTML files with structured labels and attributes.  
@@ -51,7 +50,6 @@ It is designed for text labeling tasks where you want to add semantic informatio
     2015 SCC 18, [2015] 2 S.C.R. 106
   </manual_label>
 </manual_label>
-````
 
 ### HTML with `HTMLLabelizer` Comment
 

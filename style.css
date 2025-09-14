@@ -560,6 +560,37 @@
       background: var(--muted);
     }
 
+    .param-row select {
+  flex: 1;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--hover);
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.param-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.2);
+}
+
+/* Checkbox styling */
+.param-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent); /* modern browsers */
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.param-row input[type="checkbox"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(106, 163, 255, 0.3);
+}
+
     /* Statistics */
     .stats-grid {
       display: grid;
@@ -650,3 +681,57 @@
     .hidden {
       display: none !important;
     }
+
+
+
+
+
+
+.inline-editor {
+  margin: 6px 0 6px 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+
+.inline-editor input,
+.inline-editor select {
+  padding: 6px 10px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.inline-editor input:focus,
+.inline-editor select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+
+.inline-editor .save-btn {
+  border: 1px solid var(--accent-2);
+  background: var(--accent-2);
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
+}
+
+.inline-editor .save-btn:hover {
+  filter: brightness(1.15);
+  background: #1ea87d;
+}
+

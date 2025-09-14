@@ -229,7 +229,7 @@
         addBtn.title = 'Add sublabel';
         addBtn.onclick = (e) => {
             e.stopPropagation();
-            promptAddSublabel(nodePath);
+            promptAddSublabel(nodePath, treeNode);
         };
         actions.appendChild(addBtn);
         }
@@ -239,7 +239,7 @@
       addParamBtn.title = 'Add parameter';
       addParamBtn.onclick = (e) => {
         e.stopPropagation();
-        promptAddParameter(nodePath);
+        promptAddParameter(nodePath, treeNode);
       };
       
       const deleteBtn = document.createElement('button');
@@ -283,7 +283,7 @@
         if (isExpanded) {
           // Render parameters first
           label.params.forEach((value, paramName) => {
-            const paramItem = createParameterItem(nodePath, paramName, value, level + 1);
+            const paramItem = createParameterItem(nodePath, paramName, value, level + 1, treeNode);
             childrenContainer.appendChild(paramItem);
           });
           
@@ -298,7 +298,7 @@
     });
   }
 
-  function createParameterItem(labelPath, paramName, paramValue, level) {
+  function createParameterItem(labelPath, paramName, paramValue, level, treeNode) {
     const paramNode = document.createElement('div');
     paramNode.className = 'tree-node';
     
@@ -321,7 +321,7 @@
     // Parameter value
     const paramValueSpan = document.createElement('div');
     paramValueSpan.className = 'tree-param-value';
-    paramValueSpan.textContent = paramValue || '(empty)';
+    paramValueSpan.textContent = `${paramValue.type} ${paramValue.default}` || '(empty)';
     
     // Actions
     const actions = document.createElement('div');
@@ -332,7 +332,7 @@
     editBtn.title = 'Edit parameter';
     editBtn.onclick = (e) => {
       e.stopPropagation();
-      promptEditParameter(labelPath, paramName, paramValue);
+      promptEditParameter(labelPath, paramName, paramValue, treeNode);
     };
     
     const deleteBtn = document.createElement('button');
@@ -374,105 +374,405 @@
 
   // ======= User Interaction Prompts =======
 
-  function promptAddSublabel(parentPath) {
-    const name = prompt('Enter sublabel name:');
-    if (name) {
-      const color = generateRandomColor();
-      addLabel(name, color, parentPath);
-      
-      // Expand parent node
-      const parentNodeId = parentPath.join('.');
-      expandedNodes.add(parentNodeId);
-      renderTree();
-    }
-  }
+  function promptAddSublabel(parentPath, container) {
+    // Create inline input row
+    const inlineEditor = document.createElement("div");
+    inlineEditor.className = "inline-editor";
 
-  function promptAddParameter(labelPath) {
-    const paramName = prompt('Enter parameter name:');
-    if (paramName) {
-      const paramValue = prompt('Enter parameter value (optional):') || '';
-      addParameter(labelPath, paramName, paramValue);
-      
-      // Expand the node
-      const nodeId = labelPath.join('.');
-      expandedNodes.add(nodeId);
-      renderTree();
-    }
-  }
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Sublabel name";
 
-  function promptEditParameter(labelPath, oldParamName, oldParamValue) {
-    const newParamName = prompt('Parameter name:', oldParamName);
-    if (newParamName !== null) {
-      const newParamValue = prompt('Parameter value:', oldParamValue || '');
-      if (newParamValue !== null) {
-        const label = getLabelByPath(labelPath);
-        if (label) {
-          // Delete old parameter if name changed
-          if (newParamName !== oldParamName) {
-            label.params.delete(oldParamName);
-          }
-          // Set new parameter (preserving case)
-          label.params.set(newParamName, newParamValue);
-          refreshTreeUI();
+    const saveBtn = document.createElement("button");
+    saveBtn.textContent = "Save";
+    saveBtn.className = "save-btn green";
+
+    // Handle save
+    saveBtn.onclick = () => {
+        const name = input.value.trim();
+        if (!name) return;
+
+        const color = generateRandomColor();
+        if (addLabel(name, color, parentPath)) {
+        inlineEditor.remove(); // remove editor
+        // Expand parent node
+        const parentNodeId = parentPath.join(".");
+        expandedNodes.add(parentNodeId);
+        renderTree();
         }
-      }
+    };
+
+    inlineEditor.appendChild(input);
+    inlineEditor.appendChild(saveBtn);
+
+    // Insert inline editor below the parent node
+    container.appendChild(inlineEditor);
+    input.focus();
     }
+
+
+  function promptAddParameter(labelPath, container) {
+  const inlineEditor = document.createElement("div");
+  inlineEditor.className = "inline-editor";
+
+  // Name
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.placeholder = "Parameter name";
+
+  // Type selector
+  const typeSelect = document.createElement("select");
+  ["string", "dropdown", "checkbox"].forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    typeSelect.appendChild(opt);
+  });
+
+  // Dynamic default value container
+  const defaultValueContainer = document.createElement("div");
+  defaultValueContainer.className = "default-value-container";
+
+  // Dropdown values section
+  const dropdownSection = document.createElement("div");
+  dropdownSection.className = "dropdown-section hidden";
+
+  const valuesList = document.createElement("div");
+  valuesList.className = "dropdown-values";
+
+  const addValueBtn = document.createElement("button");
+  addValueBtn.textContent = "+ Add option";
+  addValueBtn.type = "button";
+  addValueBtn.onclick = () => {
+    const itemInput = document.createElement("input");
+    itemInput.type = "text";
+    itemInput.placeholder = "Option";
+    valuesList.appendChild(itemInput);
+  };
+
+  dropdownSection.appendChild(addValueBtn);
+  dropdownSection.appendChild(valuesList);
+
+  // Render default value input depending on type
+  function renderDefaultInput(type, options = []) {
+    defaultValueContainer.innerHTML = "";
+
+    if (type === "string") {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Default value";
+      defaultValueContainer.appendChild(input);
+    } else if (type === "checkbox") {
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      defaultValueContainer.appendChild(input);
+    } else if (type === "dropdown") {
+        // No default value input for dropdown anymore
+        }
   }
+
+  // Initial default input
+  renderDefaultInput("string");
+
+  // Show/hide dropdown section + change default input
+  typeSelect.onchange = () => {
+    if (typeSelect.value === "dropdown") {
+      dropdownSection.classList.remove("hidden");
+      renderDefaultInput("dropdown", Array.from(valuesList.querySelectorAll("input")).map(i => i.value.trim()).filter(v => v));
+    } else if (typeSelect.value === "checkbox") {
+      dropdownSection.classList.add("hidden");
+      renderDefaultInput("checkbox");
+    } else {
+      dropdownSection.classList.add("hidden");
+      renderDefaultInput("string");
+    }
+  };
+
+  // Save button
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save";
+  saveBtn.className = "save-btn green";
+
+  saveBtn.onclick = () => {
+    const paramName = nameInput.value.trim();
+    if (!paramName) return;
+
+    const paramType = typeSelect.value;
+    let paramValue;
+
+    if (paramType === "dropdown") {
+      const items = Array.from(valuesList.querySelectorAll("input"))
+        .map(i => i.value.trim())
+        .filter(v => v);
+
+      const selectEl = defaultValueContainer.querySelector("select");
+      paramValue = { type: "dropdown", options: items, default: items.length > 0 ? items[0] : "" };
+    } else if (paramType === "checkbox") {
+      const checkboxEl = defaultValueContainer.querySelector("input[type='checkbox']");
+      paramValue = { type: "checkbox", default: checkboxEl && checkboxEl.checked };
+    } else {
+      const inputEl = defaultValueContainer.querySelector("input[type='text']");
+      paramValue = { type: "string", default: inputEl ? inputEl.value.trim() : "" };
+    }
+
+    addParameter(labelPath, paramName, paramValue);
+    inlineEditor.remove();
+    const nodeId = labelPath.join(".");
+    expandedNodes.add(nodeId);
+    renderTree();
+  };
+
+  inlineEditor.appendChild(nameInput);
+  inlineEditor.appendChild(typeSelect);
+  inlineEditor.appendChild(dropdownSection);
+  inlineEditor.appendChild(defaultValueContainer);
+  inlineEditor.appendChild(saveBtn);
+
+  container.appendChild(inlineEditor);
+  nameInput.focus();
+}
+
+
+function promptEditParameter(labelPath, oldParamName, oldParamValue, container) {
+  if (!container) {
+    console.error("Container is undefined or null!");
+    return;
+  }
+
+  const inlineEditor = document.createElement("div");
+  inlineEditor.className = "inline-editor";
+
+  // Extract type/value
+  let paramType = "string";
+  let defaultVal = "";
+  let options = [];
+
+  if (typeof oldParamValue === "object" && oldParamValue.type) {
+    paramType = oldParamValue.type;
+    defaultVal = oldParamValue.default || "";
+    options = oldParamValue.options || [];
+  } else {
+    defaultVal = oldParamValue || "";
+  }
+
+  // Name
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.value = oldParamName;
+  nameInput.placeholder = "Parameter name";
+
+  // Type selector
+  const typeSelect = document.createElement("select");
+  ["string", "dropdown", "checkbox"].forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t;
+    opt.textContent = t;
+    if (t === paramType) opt.selected = true;
+    typeSelect.appendChild(opt);
+  });
+
+  // Dynamic default value container
+  const defaultValueContainer = document.createElement("div");
+  defaultValueContainer.className = "default-value-container";
+
+  // Dropdown values section
+  const dropdownSection = document.createElement("div");
+  dropdownSection.className = "dropdown-section" + (paramType === "dropdown" ? "" : " hidden");
+
+  const valuesList = document.createElement("div");
+  valuesList.className = "dropdown-values";
+
+  options.forEach(optVal => {
+    const itemInput = document.createElement("input");
+    itemInput.type = "text";
+    itemInput.value = optVal;
+    valuesList.appendChild(itemInput);
+  });
+
+  const addValueBtn = document.createElement("button");
+  addValueBtn.textContent = "+ Add option";
+  addValueBtn.type = "button";
+  addValueBtn.onclick = () => {
+    const itemInput = document.createElement("input");
+    itemInput.type = "text";
+    itemInput.placeholder = "Option";
+    valuesList.appendChild(itemInput);
+  };
+
+  dropdownSection.appendChild(addValueBtn);
+  dropdownSection.appendChild(valuesList);
+
+  // Render default value input depending on type
+  function renderDefaultInput(type, options = [], current = "") {
+    defaultValueContainer.innerHTML = "";
+
+    if (type === "string") {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = current;
+      input.placeholder = "Default value";
+      defaultValueContainer.appendChild(input);
+    } else if (type === "checkbox") {
+      const input = document.createElement("input");
+      input.type = "checkbox";
+      input.checked = current === true || current === "true";
+      defaultValueContainer.appendChild(input);
+    } else if (type === "dropdown") {
+        // No default value input for dropdown anymore
+        }
+  }
+
+  renderDefaultInput(paramType, options, defaultVal);
+
+  // Show/hide on type change
+  typeSelect.onchange = () => {
+    if (typeSelect.value === "dropdown") {
+      dropdownSection.classList.remove("hidden");
+      const items = Array.from(valuesList.querySelectorAll("input")).map(i => i.value.trim()).filter(v => v);
+      renderDefaultInput("dropdown", items, "");
+    } else if (typeSelect.value === "checkbox") {
+      dropdownSection.classList.add("hidden");
+      renderDefaultInput("checkbox", [], false);
+    } else {
+      dropdownSection.classList.add("hidden");
+      renderDefaultInput("string", [], "");
+    }
+  };
+
+  // Save button
+  const saveBtn = document.createElement("button");
+  saveBtn.textContent = "Save";
+  saveBtn.className = "save-btn green";
+
+  saveBtn.onclick = () => {
+    const newParamName = nameInput.value.trim();
+    if (!newParamName) return;
+
+    const newType = typeSelect.value;
+    let newParamValue;
+
+    if (newType === "dropdown") {
+      const items = Array.from(valuesList.querySelectorAll("input"))
+        .map(i => i.value.trim())
+        .filter(v => v);
+      const selectEl = defaultValueContainer.querySelector("select");
+      newParamValue = { type: "dropdown", options: items, default: items.length > 0 ? items[0] : "" };
+    } else if (newType === "checkbox") {
+      const checkboxEl = defaultValueContainer.querySelector("input[type='checkbox']");
+      newParamValue = { type: "checkbox", default: checkboxEl && checkboxEl.checked };
+    } else {
+      const inputEl = defaultValueContainer.querySelector("input[type='text']");
+      newParamValue = { type: "string", default: inputEl ? inputEl.value.trim() : "" };
+    }
+
+    const label = getLabelByPath(labelPath);
+    if (label) {
+      if (newParamName !== oldParamName) {
+        label.params.delete(oldParamName);
+      }
+      label.params.set(newParamName, newParamValue);
+      inlineEditor.remove();
+      refreshTreeUI();
+    }
+  };
+
+  inlineEditor.appendChild(nameInput);
+  inlineEditor.appendChild(typeSelect);
+  inlineEditor.appendChild(dropdownSection);
+  inlineEditor.appendChild(defaultValueContainer);
+  inlineEditor.appendChild(saveBtn);
+
+  container.appendChild(inlineEditor);
+  nameInput.focus();
+}
+
+
+
 
   // ======= Parameter Menu for Labeled Text =======
+function showParameterMenu(labelElement, x, y) {
+  hideContextMenu();
+  hideParameterMenu();
 
-  function showParameterMenu(labelElement, x, y) {
-    hideContextMenu();
-    hideParameterMenu();
+  currentParamElement = labelElement;
 
-    currentParamElement = labelElement;
-    
-    // Get label name from the first attribute
-    const labelName = labelElement.getAttribute("labelName");
-    const parent = labelElement.getAttribute("parent");
-    
-    if (!labelName) return;
-    
-    const path = parent ? [parent, labelName] : [labelName];
+  const labelName = labelElement.getAttribute("labelName");
+  const parent = labelElement.getAttribute("parent");
 
-    const labelData = getLabelByPath(path);
-    if (!labelData || labelData.params.size === 0) {
-      alert('This label has no parameters to edit');
-      return;
+  if (!labelName) return;
+
+  const path = parent ? [parent, labelName] : [labelName];
+  const labelData = getLabelByPath(path);
+
+  if (!labelData || labelData.params.size === 0) {
+    alert("This label has no parameters to edit");
+    return;
+  }
+
+  elements.paramMenuTitle.textContent = `Edit Parameters - ${labelName}`;
+  elements.paramForm.innerHTML = "";
+
+  // Create inputs depending on param type
+  labelData.params.forEach((paramDef, paramName) => {
+
+    const paramRow = document.createElement("div");
+    paramRow.className = "param-row";
+
+    const label = document.createElement("label");
+    label.textContent = paramName + ":";
+
+    let input;
+
+    if (typeof paramDef === "object" && paramDef.type) {
+      const type = paramDef.type;
+      const currentVal = labelElement.getAttribute(paramName) ?? paramDef.default ?? "";
+
+
+
+      if (type === "string") {
+        input = document.createElement("input");
+        input.type = "text";
+        input.value = currentVal;
+      } else if (type === "checkbox") {
+        input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = currentVal === true || currentVal === "true";
+      } else if (type === "dropdown") {
+        input = document.createElement("select");
+        (paramDef.options || []).forEach((optVal) => {
+          const opt = document.createElement("option");
+          opt.value = optVal;
+          opt.textContent = optVal;
+          if (optVal === currentVal) opt.selected = true;
+          input.appendChild(opt);
+        });
+      }
+    } else {
+      // Fallback: treat as string
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = labelElement.getAttribute(paramName) || paramDef || "";
     }
 
-    elements.paramMenuTitle.textContent = `Edit Parameters - ${labelName}`;
-    elements.paramForm.innerHTML = '';
+    input.dataset.paramName = paramName;
 
-    // Create input for each parameter
-    labelData.params.forEach((value, paramName) => {
-      const paramRow = document.createElement('div');
-      paramRow.className = 'param-row';
-      
-      const label = document.createElement('label');
-      label.textContent = paramName + ':';
-      
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.value = labelElement.getAttribute(paramName) || value || '';
-      input.dataset.paramName = paramName;
-      
-      paramRow.appendChild(label);
-      paramRow.appendChild(input);
-      elements.paramForm.appendChild(paramRow);
-    });
+    paramRow.appendChild(label);
+    paramRow.appendChild(input);
+    elements.paramForm.appendChild(paramRow);
+  });
 
-    // Position menu
-    const menuWidth = 250;
-    const menuHeight = 200;
-    
-    x = Math.min(x, window.innerWidth - menuWidth - 10);
-    y = Math.min(y, window.innerHeight - menuHeight - 10);
-    
-    elements.paramMenu.style.left = `${x}px`;
-    elements.paramMenu.style.top = `${y}px`;
-    elements.paramMenu.classList.remove('hidden');
-  }
+  // Position menu
+  const menuWidth = 250;
+  const menuHeight = 200;
+
+  x = Math.min(x, window.innerWidth - menuWidth - 10);
+  y = Math.min(y, window.innerHeight - menuHeight - 10);
+
+  elements.paramMenu.style.left = `${x}px`;
+  elements.paramMenu.style.top = `${y}px`;
+  elements.paramMenu.classList.remove("hidden");
+}
+
 
   function hideParameterMenu() {
     elements.paramMenu.classList.add('hidden');
@@ -480,29 +780,51 @@
   }
 
   function saveParameters() {
-    if (!currentParamElement) return;
+  if (!currentParamElement) return;
 
-    const inputs = elements.paramForm.querySelectorAll('input[data-param-name]');
-    
-    inputs.forEach(input => {
-      const paramName = input.dataset.paramName;
-      const paramValue = input.value;
-      
-      // Update the HTML attribute (preserving case of parameter name)
-      currentParamElement.setAttribute(paramName, paramValue);
-    });
+  // Grab every element we created in the param form (inputs and selects),
+  // they all have data-param-name set in showParameterMenu()
+  const elems = elements.paramForm.querySelectorAll('[data-param-name]');
 
-    // Update the HTML content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = elements.htmlContent.innerHTML;
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(currentHtml, 'text/html');
-    doc.body.innerHTML = tempDiv.innerHTML;
-    currentHtml = doc.documentElement.outerHTML;
+  elems.forEach(el => {
+    const paramName = el.dataset.paramName;
+    let paramValue = '';
 
-    hideParameterMenu();
-    updateStats();
-  }
+    // checkbox (input[type="checkbox"])
+    if (el.tagName.toLowerCase() === 'input' && el.type === 'checkbox') {
+      paramValue = el.checked ? 'true' : 'false';
+    }
+    // select (dropdown)
+    else if (el.tagName.toLowerCase() === 'select') {
+      paramValue = el.value ?? '';
+    }
+    // other inputs (text, number, etc.)
+    else if (el.tagName.toLowerCase() === 'input') {
+      paramValue = el.value ?? '';
+    }
+    // fallback
+    else {
+      paramValue = el.value ?? '';
+    }
+
+    // Store the actual value for this mention as an attribute (string)
+    // (preserving case of paramName)
+    currentParamElement.setAttribute(paramName, paramValue);
+  });
+
+  // Rebuild currentHtml from the editable HTML content (keeps your existing approach)
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = elements.htmlContent.innerHTML;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(currentHtml, 'text/html');
+  doc.body.innerHTML = tempDiv.innerHTML;
+  currentHtml = doc.documentElement.outerHTML;
+
+  hideParameterMenu();
+  updateStats();
+}
+
 
   // ======= Label Options for Context Menu =======
 
@@ -783,9 +1105,17 @@
       }
 
       // Apply parameters as attributes (preserving case)
-      labelData.params.forEach((value, paramName) => {
-        labelElement.setAttribute(paramName, value);
-      });
+      labelData.params.forEach((paramDef, paramName) => {
+        let initialValue = "";
+
+        if (typeof paramDef === "object" && paramDef.type) {
+            initialValue = paramDef.default ?? "";
+        } else {
+            initialValue = paramDef;
+        }
+
+        labelElement.setAttribute(paramName, initialValue);
+        });
       
       labelElement.style.backgroundColor = labelData.color;
       labelElement.style.color = getContrastColor(labelData.color);

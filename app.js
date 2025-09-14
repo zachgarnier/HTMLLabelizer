@@ -873,83 +873,64 @@ function showParameterMenu(labelElement, x, y) {
 
   // ======= HTML Processing =======
   function extractExistingLabels(htmlString) {
-    labels.clear(); // Clear previous state on fresh import
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(htmlString, 'text/html');
-    const allMentions = Array.from(doc.querySelectorAll('manual_label'));
+  labels.clear();
 
-    // We'll index by label name for easy lookups
-    const tempMap = new Map();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(htmlString, "text/html");
 
-    // First pass: create all label objects
-    for (const mention of allMentions) {
-        const labelName = mention.getAttribute('labelName');
-        if (!labelName) continue;
-
-        // Get the color as above:
-        let color = mention.getAttribute('color');
-        if (!color) {
-            const styleString = mention.getAttribute('style') || '';
-            const m = styleString.match(/background-color:\s*([^;]+);?/i);
-            if (m) {
-                color = m[1].trim();
-            }
-        }
-        if (!color) {
-            color = generateRandomColor();
-        }
-
-        const params = {};
-        // All attributes, except reserved ones, are parameters:
-        for (const attr of mention.getAttributeNames()) {
-            const lower = attr.toLowerCase();
-            if (
-                lower !== 'labelname' &&
-                lower !== 'parent' &&
-                lower !== 'style' &&
-                lower !== 'class' &&
-                lower !== 'color'
-            ) {
-                params[attr] = mention.getAttribute(attr);
-            }
-        }
-
-        // Create label object (as in your createLabel)
-        if (!tempMap.has(labelName)) {
-            tempMap.set(labelName, {
-                name: labelName,
-                color: color,
-                type: "structured",
-                params: new Map(Object.entries(params)),
-                sublabels: new Map(),
-                parent: mention.getAttribute('parent') || "",
-            });
-        } else {
-            // If label already seen, possibly merge in new params (your choice)
-            const existing = tempMap.get(labelName);
-            Object.entries(params).forEach(([k, v]) => existing.params.set(k, v));
-        }
+  // 1. Find the <!-- HTMLLabelizer ... --> comment
+  let schema = null;
+  const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_COMMENT, null, false);
+  while (walker.nextNode()) {
+    const comment = walker.currentNode.nodeValue.trim();
+    if (comment.startsWith("HTMLLabelizer")) {
+      try {
+        const jsonPart = comment.replace("HTMLLabelizer", "").trim();
+        schema = JSON.parse(jsonPart);
+      } catch (e) {
+        console.warn("Invalid HTMLLabelizer schema:", e);
+      }
+      break;
     }
-
-    // Second pass: reconstruct tree structure
-    tempMap.forEach((labelObj, name) => {
-        const parentName = labelObj.parent;
-        if (parentName && tempMap.has(parentName)) {
-            // Insert as sublabel to parent
-            tempMap.get(parentName).sublabels.set(name, labelObj);
-        }
-    });
-
-    // Only add labels with no parent to the main labels map (roots)
-    labels.clear();
-    tempMap.forEach(labelObj => {
-        if (!labelObj.parent) {
-            labels.set(labelObj.name, labelObj);
-        }
-    });
-
-    refreshTreeUI(); // Update UI after loading
   }
+
+  // 2. If schema found, build labels
+  if (schema) {
+    buildLabelsFromSchema(schema);
+  }
+
+  refreshTreeUI();
+}
+
+function buildLabelsFromSchema(schema, parent = null, map = labels) {
+  Object.entries(schema).forEach(([name, def]) => {
+  // prepare params
+  const paramsMap = new Map();
+  if (def.attributes && typeof def.attributes === "object") {
+    Object.entries(def.attributes).forEach(([pname, pdef]) => {
+      paramsMap.set(pname, pdef);
+    });
+  }
+
+  const labelObj = {
+    name,
+    color: def.color || generateRandomColor(),
+    type: "structured",
+    params: paramsMap,
+    sublabels: new Map(),
+    parent,
+  };
+
+  map.set(name, labelObj);
+
+  if (def.sublabels && Object.keys(def.sublabels).length > 0) {
+    buildLabelsFromSchema(def.sublabels, name, labelObj.sublabels);
+  }
+});
+
+}
+
+
 
   function renderHtmlContent() {
     if (!currentHtml) {
@@ -1173,26 +1154,65 @@ function showParameterMenu(labelElement, x, y) {
 
   // Download
   elements.downloadBtn.addEventListener('click', () => {
-    if (!currentHtml) return;
+  if (!currentHtml) return;
 
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(currentHtml, 'text/html');
-    
-    const deleteButtons = doc.querySelectorAll('.delete-btn');
-    deleteButtons.forEach(button => {
-      button.remove();
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(currentHtml, 'text/html');
+
+  // 1. Remove delete buttons
+  const deleteButtons = doc.querySelectorAll('.delete-btn');
+  deleteButtons.forEach(button => button.remove());
+
+  // 2. Build JSON schema from your current labels tree
+  function buildSchemaFromLabels(map) {
+    const obj = {};
+    map.forEach(label => {
+      obj[label.name] = {
+        color: label.color,
+        sublabels: buildSchemaFromLabels(label.sublabels),
+        attributes: Object.fromEntries(label.params || []),
+      };
     });
+    return obj;
+  }
 
-    const finalHtml = doc.documentElement.outerHTML;
+  const schema = buildSchemaFromLabels(labels);
+  const schemaJson = JSON.stringify(schema, null, 2); // pretty print
 
-    const blob = new Blob([finalHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = currentFileName || 'labeled.html';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  // 3. Find existing HTMLLabelizer comment
+  let found = false;
+  const walker = doc.createTreeWalker(doc, NodeFilter.SHOW_COMMENT, null);
+  let commentNode;
+  while ((commentNode = walker.nextNode())) {
+    if (commentNode.nodeValue && commentNode.nodeValue.trim().startsWith("HTMLLabelizer")) {
+      // Replace old content
+      commentNode.nodeValue = " HTMLLabelizer\n" + schemaJson + "\n";
+      found = true;
+      break;
+    }
+  }
+
+  // 4. If not found, insert before <head>
+  if (!found) {
+    const newComment = doc.createComment(" HTMLLabelizer\n" + schemaJson + "\n");
+    const htmlEl = doc.documentElement;
+    const headEl = htmlEl.querySelector("head");
+    htmlEl.insertBefore(newComment, headEl);
+  }
+
+  // 5. Serialize back to HTML
+  const finalHtml = "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+
+  // 6. Download
+  const blob = new Blob([finalHtml], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = currentFileName || 'labeled.html';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
 
   // Clear all
   elements.clearBtn.addEventListener('click', () => {
